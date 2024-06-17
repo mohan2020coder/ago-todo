@@ -1,2 +1,2 @@
 # ago-todo
-checking golang with anglular
+checking golang with angular

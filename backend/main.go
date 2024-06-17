@@ -17,30 +17,40 @@ type Todo struct {
 var DB *gorm.DB
 
 func main() {
+	// Initialize the database connection
 	var err error
 	DB, err = gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")
 	}
 
+	// Auto-migrate the Todo model
 	DB.AutoMigrate(&Todo{})
 
+	// Initialize the Gin router
 	r := gin.Default()
 	r.Use(corsMiddleware())
 
+	// Serve static files from the Angular dist directory
+	r.StaticFS("/static", http.Dir("../todo/dist/todo"))
+
+	// API endpoints for CRUD operations
 	r.GET("/todos", getTodos)
 	r.POST("/todos", createTodo)
 	r.PUT("/todos/:id", updateTodo)
 	r.DELETE("/todos/:id", deleteTodo)
 
-	r.Static("/frontend", "./frontend/dist/frontend")
+	// Handle requests to non-existing API routes by serving index.html
 	r.NoRoute(func(c *gin.Context) {
-		c.File("./frontend/dist/frontend/index.html")
+		// Serve index.html from the Angular build directory
+		http.ServeFile(c.Writer, c.Request, "../todo/dist/todo/index.html")
 	})
 
+	// Start the Gin server on port 8080
 	r.Run(":8080")
 }
 
+// Middleware to handle CORS
 func corsMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
@@ -48,7 +58,7 @@ func corsMiddleware() gin.HandlerFunc {
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
 		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
+			c.AbortWithStatus(http.StatusNoContent)
 			return
 		}
 
@@ -56,6 +66,7 @@ func corsMiddleware() gin.HandlerFunc {
 	}
 }
 
+// Handlers for CRUD operations
 func getTodos(c *gin.Context) {
 	var todos []Todo
 	DB.Find(&todos)

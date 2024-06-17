@@ -3,13 +3,15 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../environments/environment';
+
 
 @Injectable({
   providedIn: 'root'
 })
 export class TodoService {
 
-  private apiUrl = 'http://localhost:8080/todos'; // Replace with your Golang API URL
+  private apiUrl = `${environment.apiUrl}/todos`; // Replace with your Golang API URL
 
   constructor(private http: HttpClient) { }
 

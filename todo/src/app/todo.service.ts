@@ -1,3 +1,5 @@
+// todo.service.ts
+
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -6,7 +8,8 @@ import { Observable } from 'rxjs';
   providedIn: 'root'
 })
 export class TodoService {
-  private apiUrl = 'http://localhost:8080/api/v1/todos';
+
+  private apiUrl = 'http://localhost:8080/todos'; // Replace with your Golang API URL
 
   constructor(private http: HttpClient) { }
 
@@ -18,11 +21,9 @@ export class TodoService {
     return this.http.post<any>(this.apiUrl, todo);
   }
 
-  updateTodo(id: number, todo: any): Observable<any> {
-    return this.http.put<any>(`${this.apiUrl}/${id}`, todo);
-  }
-
   deleteTodo(id: number): Observable<any> {
-    return this.http.delete<any>(`${this.apiUrl}/${id}`);
+    const url = `${this.apiUrl}/${id}`;
+    return this.http.delete<any>(url);
   }
 }
+

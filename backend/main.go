@@ -1,96 +1,97 @@
 package main
 
 import (
-	"log"
 	"net/http"
-	"time"
-
-	"backend/models"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
-var db *gorm.DB
+type Todo struct {
+	ID        uint   `json:"id" gorm:"primaryKey"`
+	Title     string `json:"title"`
+	Completed bool   `json:"completed"`
+}
+
+var DB *gorm.DB
 
 func main() {
-	// Initialize Gin router
-	r := gin.Default()
-
-	// Serve Angular static files
-	r.StaticFS("/", http.Dir("./frontend/dist/frontend"))
-
-	// Connect to SQLite database
 	var err error
-	db, err = gorm.Open("sqlite3", "./gorm.db")
+	DB, err = gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
 	if err != nil {
-		log.Fatal("Failed to connect to database:", err)
-	}
-	defer db.Close()
-
-	// Auto Migrate database schema
-	db.AutoMigrate(&models.Todo{})
-
-	// Define API routes
-	v1 := r.Group("/api/v1")
-	{
-		v1.GET("/todos", GetTodos)
-		v1.POST("/todos", CreateTodo)
-		v1.GET("/todos/:id", GetTodo)
-		v1.PUT("/todos/:id", UpdateTodo)
-		v1.DELETE("/todos/:id", DeleteTodo)
+		panic("failed to connect database")
 	}
 
-	// Start server
+	DB.AutoMigrate(&Todo{})
+
+	r := gin.Default()
+	r.Use(corsMiddleware())
+
+	r.GET("/todos", getTodos)
+	r.POST("/todos", createTodo)
+	r.PUT("/todos/:id", updateTodo)
+	r.DELETE("/todos/:id", deleteTodo)
+
+	r.Static("/frontend", "./frontend/dist/frontend")
+	r.NoRoute(func(c *gin.Context) {
+		c.File("./frontend/dist/frontend/index.html")
+	})
+
 	r.Run(":8080")
 }
 
-// Handlers
-func GetTodos(c *gin.Context) {
-	var todos []models.Todo
-	db.Find(&todos)
+func corsMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	}
+}
+
+func getTodos(c *gin.Context) {
+	var todos []Todo
+	DB.Find(&todos)
 	c.JSON(http.StatusOK, todos)
 }
 
-func CreateTodo(c *gin.Context) {
-	var todo models.Todo
-	c.BindJSON(&todo)
-	todo.Completed = false
-	todo.CreatedAt = time.Now()
-	db.Create(&todo)
-	c.JSON(http.StatusCreated, todo)
-}
-
-func GetTodo(c *gin.Context) {
-	id := c.Param("id")
-	var todo models.Todo
-	if db.First(&todo, id).RecordNotFound() {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Todo not found"})
+func createTodo(c *gin.Context) {
+	var todo Todo
+	if err := c.ShouldBindJSON(&todo); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	DB.Create(&todo)
 	c.JSON(http.StatusOK, todo)
 }
 
-func UpdateTodo(c *gin.Context) {
+func updateTodo(c *gin.Context) {
 	id := c.Param("id")
-	var todo models.Todo
-	if db.First(&todo, id).RecordNotFound() {
+	var todo Todo
+	if err := DB.First(&todo, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Todo not found"})
 		return
 	}
-	c.BindJSON(&todo)
-	db.Save(&todo)
+	if err := c.ShouldBindJSON(&todo); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	DB.Save(&todo)
 	c.JSON(http.StatusOK, todo)
 }
 
-func DeleteTodo(c *gin.Context) {
+func deleteTodo(c *gin.Context) {
 	id := c.Param("id")
-	var todo models.Todo
-	if db.First(&todo, id).RecordNotFound() {
+	if err := DB.Delete(&Todo{}, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Todo not found"})
 		return
 	}
-	db.Delete(&todo)
-	c.JSON(http.StatusOK, gin.H{"message": "Todo deleted successfully"})
+	c.Status(http.StatusNoContent)
 }

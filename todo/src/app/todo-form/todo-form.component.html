@@ -1,0 +1,7 @@
+<!-- todo-form.component.html -->
+
+<form [formGroup]="todoForm" (ngSubmit)="onSubmit()">
+    <input type="text" formControlName="title" placeholder="Enter todo title">
+    <button type="submit">Add Todo</button>
+  </form>
+  

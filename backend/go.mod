@@ -5,7 +5,11 @@ go 1.22.1
 require (
 	github.com/gin-gonic/gin v1.10.0
 	github.com/jinzhu/gorm v1.9.16
+	gorm.io/driver/sqlite v1.5.6
+	gorm.io/gorm v1.25.10
 )
+
+require github.com/jinzhu/now v1.1.5 // indirect
 
 require (
 	github.com/bytedance/sonic v1.11.6 // indirect
